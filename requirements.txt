@@ -1,0 +1,5 @@
+kivy==2.1.0
+pillow
+pyzmq
+Cython==0.29.19
+setuptools
