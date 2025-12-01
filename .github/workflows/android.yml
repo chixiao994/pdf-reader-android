@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     
     steps:
     - name: Checkout code
@@ -37,11 +37,44 @@ jobs:
         if [ ! -f buildozer.spec ]; then
           buildozer init
         fi
-        cat buildozer.spec
+        # 显示配置确认
+        cat buildozer.spec | head -20
+        
+    - name: Pre-accept Android SDK licenses
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
+        
+    - name: Set up Android SDK and accept licenses
+      run: |
+        # 设置环境变量
+        echo "ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+        
+        # 预安装必要的 SDK 组件
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        
+        # 使用 sdkmanager 接受所有许可证
+        yes | $ANDROID_SDK_ROOT/tools/bin/sdkmanager --licenses || echo "License acceptance completed"
         
     - name: Build APK with Buildozer
       run: |
+        echo "Starting APK build..."
+        # 设置构建环境
+        export ANDROID_HOME="$HOME/.buildozer/android/platform/android-sdk"
+        export ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+        
+        # 构建 APK
         buildozer -v android debug
+      timeout-minutes: 35
+        
+    - name: Check build results
+      run: |
+        echo "=== Build results ==="
+        ls -la bin/ || echo "No bin directory"
+        find . -name "*.apk" 2>/dev/null || echo "No APK files found"
         
     - name: Upload APK to Release
       if: startsWith(github.ref, 'refs/tags/')
@@ -50,3 +83,10 @@ jobs:
         files: bin/*.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pdf-reader-apk
+        path: bin/*.apk
+        retention-days: 30
