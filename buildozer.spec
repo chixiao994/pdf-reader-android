@@ -4,29 +4,29 @@ package.name = pdfreader
 package.domain = org.example
 
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,ttf,json
+source.include_exts = py,png,jpg,kv,atlas,json
 
 version = 1.0
-requirements = python3,kivy==2.1.0,pillow,pyzmq,cython
+requirements = python3,kivy,pygments,pymupdf,android
 
 orientation = portrait
-fullscreen = 0
 
 [buildozer]
 log_level = 2
 
-# Android配置
-android.api = 33
-android.minapi = 21
-android.ndk = 25b
-android.sdk = 33
-android.arch = arm64-v8a
+[android]
+api = 33
+minapi = 21
+ndk = 25b
+android.sdk_path = /usr/local/lib/android/sdk
+android.accept_sdk_license = True  # 关键配置！
 
-# 权限
-android.permissions = READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+[android:activity_launch_mode]
+singleTask = True
 
-# 添加额外的gradle依赖
-android.gradle_dependencies = implementation 'androidx.core:core:1.9.0'
+[android:meta-data]
+android.app.uses_cleartext_traffic = true
 
-presplash.filename = %(source.dir)s/presplash.png
-icon.filename = %(source.dir)s/icon.png
+[android:grant_permissions]
+android.permission.READ_EXTERNAL_STORAGE = true
+android.permission.WRITE_EXTERNAL_STORAGE = true
