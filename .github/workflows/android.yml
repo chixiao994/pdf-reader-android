@@ -25,6 +25,24 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y git zip unzip openjdk-11-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev
         
+    - name: Setup Android SDK and accept licenses
+      run: |
+        # 设置 Android SDK 环境变量
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+        mkdir -p $ANDROID_SDK_ROOT
+        
+        # 下载命令行工具
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+        mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+        
+        # 接受所有许可证
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+        
+        # 安装必要的构建工具
+        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platforms;android-33" "platform-tools"
+        
     - name: Install Buildozer and Python dependencies
       run: |
         pip install --upgrade pip
@@ -37,44 +55,28 @@ jobs:
         if [ ! -f buildozer.spec ]; then
           buildozer init
         fi
-        # 显示配置确认
-        cat buildozer.spec | head -20
         
-    - name: Pre-accept Android SDK licenses
-      run: |
-        mkdir -p ~/.android
-        touch ~/.android/repositories.cfg
-        yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
+        # 更新 buildozer.spec 使用兼容的构建工具
+        sed -i 's/android.sdk = .*/android.sdk = 34/' buildozer.spec
+        sed -i 's/android.ndk = .*/android.ndk = 25b/' buildozer.spec
+        sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
+        sed -i 's/android.minapi = .*/android.minapi = 21/' buildozer.spec
         
-    - name: Set up Android SDK and accept licenses
-      run: |
-        # 设置环境变量
-        echo "ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-        echo "ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-        
-        # 预安装必要的 SDK 组件
-        mkdir -p ~/.android
-        touch ~/.android/repositories.cfg
-        
-        # 使用 sdkmanager 接受所有许可证
-        yes | $ANDROID_SDK_ROOT/tools/bin/sdkmanager --licenses || echo "License acceptance completed"
+        cat buildozer.spec | grep "android\."
         
     - name: Build APK with Buildozer
       run: |
-        echo "Starting APK build..."
-        # 设置构建环境
-        export ANDROID_HOME="$HOME/.buildozer/android/platform/android-sdk"
-        export ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+        # 设置环境变量
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
         
-        # 构建 APK
         buildozer -v android debug
-      timeout-minutes: 35
         
     - name: Check build results
       run: |
         echo "=== Build results ==="
-        ls -la bin/ || echo "No bin directory"
-        find . -name "*.apk" 2>/dev/null || echo "No APK files found"
+        find . -name "*.apk" 2>/dev/null | head -10
+        ls -la bin/ 2>/dev/null || echo "No bin directory"
         
     - name: Upload APK to Release
       if: startsWith(github.ref, 'refs/tags/')
