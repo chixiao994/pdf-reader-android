@@ -11,8 +11,6 @@
 - 📐 半边页阅读模式
 - 🎯 简洁直观的界面
 
-## 🚀 下载安装
-前往 [Releases](https://github.com/chixiao994/pdf-reader-android/releases) 页面下载APK文件。
 
 ## 🔧 本地构建
 ```bash
@@ -25,3 +23,6 @@ cd pdf-reader-android
 
 # 构建APK
 buildozer android debug
+
+
+此版没有完成打包，不提供下载，可以自行本地构建。
